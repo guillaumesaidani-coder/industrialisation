@@ -51,6 +51,11 @@ from fastapi import HTTPException
 # vrai port réseau (voir explications détaillées dans test_api.py).
 from fastapi.testclient import TestClient
 
+# loguru.logger : la même bibliothèque de journalisation que main.py. On lui
+# attache un "sink" temporaire (une liste Python) pour CAPTURER les lignes de
+# log émises pendant un test, sans écrire sur disque.
+from loguru import logger
+
 # security : le module qui contient les garde-fous (limite de taille du corps,
 # limitation de débit, et leurs constantes/états internes).
 from indusense.api import security
@@ -188,3 +193,42 @@ def test_rate_limit_blocks_after_limit():
     # (Too Many Requests), confirmant que la limitation de débit a bien bloqué.
     # [PÉDAGOGIE] ORACLE — l'assertion compare le résultat observé au contrat attendu par ce test.
     assert e.value.status_code == 429
+
+
+# [PÉDAGOGIE] BLOC `test_no_secret_or_payload_leak_in_logs` — ce test transforme un comportement
+# [PÉDAGOGIE] attendu en contrat de non-régression.
+# [PÉDAGOGIE] CONTRAT — entrées : aucun argument explicite ; preuve : la dernière assertion est
+# [PÉDAGOGIE] l'oracle : son échec doit pointer la garantie cassée.
+def test_no_secret_or_payload_leak_in_logs():
+    """Vérifie qu'aucune ligne de log n'expose la clé API ni le contenu du payload.
+
+    POURQUOI (menace *Information disclosure* du threat model, module 26) : un log
+    bavard qui reproduit la clé API ou les relevés capteurs transformerait un outil
+    de diagnostic en fuite de données. Ce test capture les logs émis pendant un
+    appel réel à ``/predict-tabular`` et vérifie leur absence, quel que soit le
+    code de réponse obtenu (401 ici : pas besoin d'un modèle chargé).
+
+    IMPORTANT : ce test prouve la non-divulgation, pas l'existence d'un audit
+    logging structuré — celui-ci reste Planifié v0 (cf. security_controls.md).
+    """
+    captured: list[str] = []
+    # On attache un "sink" temporaire : chaque ligne de log formatée est ajoutée
+    # à la liste `captured`. On le retire à la fin (bloc try/finally) pour ne pas
+    # polluer les autres tests.
+    secret_value = "un-secret-de-test-tres-identifiable"
+    payload_marker = "capteur-donnee-sensible-9982"
+    sink_id = logger.add(captured.append, level="TRACE")
+    try:
+        client.post(
+            "/predict-tabular",
+            headers={"X-API-Key": secret_value},
+            json={"machine_id": payload_marker, "readings": []},
+        )
+    finally:
+        logger.remove(sink_id)
+
+    logs_text = "\n".join(captured)
+    # [PÉDAGOGIE] ORACLE — l'assertion compare le résultat observé au contrat attendu par ce test.
+    assert secret_value not in logs_text
+    # [PÉDAGOGIE] ORACLE — l'assertion compare le résultat observé au contrat attendu par ce test.
+    assert payload_marker not in logs_text
