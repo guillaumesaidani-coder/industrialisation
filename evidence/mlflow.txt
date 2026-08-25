@@ -1,0 +1,6 @@
+run_id=d015dbc540a441ea8f9a8a940b359b95
+tracking_uri=sqlite:///mlflow.db
+experiment=indusense-maintenance
+registered_model=indusense-rf (version 2)
+run_name=rf-637be8d38250
+metrics: pr_auc=0.1036 roc_auc=0.2475 threshold=0.975
