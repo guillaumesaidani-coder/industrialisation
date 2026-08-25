@@ -1,4 +1,21 @@
 #!/usr/bin/env python3
+# [PÉDAGOGIE] ============================================================================
+# [PÉDAGOGIE] FICHIER — scripts/demo_versioning.py
+# [PÉDAGOGIE] MODULE  — M24 — DVC, MLflow et traçabilité d'expérience
+# [PÉDAGOGIE] RÔLE    — Montrer comment relier une version de données, un entraînement et un
+# [PÉDAGOGIE]           modèle enregistré.
+# [PÉDAGOGIE] THÉORIE — Git versionne le code et les métadonnées ; DVC adresse les données par
+# [PÉDAGOGIE]           empreinte
+# [PÉDAGOGIE]           • MLflow associe paramètres, métriques et artefacts à un run_id
+# [PÉDAGOGIE]           • un split temporel évite d'entraîner le passé avec une information venue
+# [PÉDAGOGIE]             du futur
+# [PÉDAGOGIE] À VOIR  — La preuve utile relie commit, empreinte de données, run_id, métriques et
+# [PÉDAGOGIE]           artefact de modèle.
+# [PÉDAGOGIE] PIÈGE   — Une bonne métrique sans provenance ne permet ni reproduction ni audit.
+# [PÉDAGOGIE] GARDE   — Toutes les lignes marquées [PÉDAGOGIE] sont des commentaires : elles
+# [PÉDAGOGIE]           guident la lecture sans changer l'exécution.
+# [PÉDAGOGIE] ============================================================================
+
 # =============================================================================
 #  scripts/demo_versioning.py  —  DÉMO « versionner DONNÉES + MODÈLE »
 # -----------------------------------------------------------------------------
@@ -31,6 +48,7 @@ Tout est idempotent et pilotable :  --no-mlflow / --no-dvc / --remote ...
     uv run python scripts/demo_versioning.py --remote /tmp/dvc-store
 """
 
+# [PÉDAGOGIE] DÉPENDANCE — __future__ : apporte une dépendance explicitement visible au lecteur.
 from __future__ import annotations  # annotations de type modernes
 
 import argparse  # options de ligne de commande
@@ -60,8 +78,14 @@ from sklearn.model_selection import (
 )
 
 # --- Bootstrap : rendre le package `indusense` importable --------------------
+# [PÉDAGOGIE] CONSTANTE / CONTRAT — cette valeur nommée centralise un choix partagé au lieu de le
+# [PÉDAGOGIE] disperser.
 ROOT = Path(__file__).resolve().parents[1]  # racine du repo (scripts/ → ..)
+# [PÉDAGOGIE] CONSTANTE / CONTRAT — cette valeur nommée centralise un choix partagé au lieu de le
+# [PÉDAGOGIE] disperser.
 SRC = ROOT / "src"
+# [PÉDAGOGIE] DÉCISION — cette condition matérialise une règle testable ; lire séparément le cas
+# [PÉDAGOGIE] vrai et le cas faux.
 if SRC.exists() and str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
@@ -73,18 +97,28 @@ from indusense.models.tabular import (  # noqa: E402
     train_model,
 )
 
+# [PÉDAGOGIE] ERREUR — cette frontière distingue le chemin nominal de la stratégie explicite de
+# [PÉDAGOGIE] récupération.
 try:
     # On récupère la version du package pour la tracer dans les métadonnées.
     from indusense import __version__ as PKG_VERSION  # noqa: E402
 except Exception:  # pragma: no cover  (filet de sécurité si l'import échoue)
     PKG_VERSION = "0.1.0"
 
+# [PÉDAGOGIE] CONSTANTE / CONTRAT — cette valeur nommée centralise un choix partagé au lieu de le
+# [PÉDAGOGIE] disperser.
 TARGET = "panne"  # nom de la colonne cible
 # Dépendances FIGÉES pour l'environnement du modèle MLflow. On les précise pour
 # éviter l'inférence automatique d'environnement (fragile selon les machines).
+# [PÉDAGOGIE] CONSTANTE / CONTRAT — cette valeur nommée centralise un choix partagé au lieu de le
+# [PÉDAGOGIE] disperser.
 PIP_REQS = ["scikit-learn", "pandas", "numpy", "joblib"]
 
 
+# [PÉDAGOGIE] BLOC `sh` — unité de responsabilité : isoler un comportement nommable, testable et
+# [PÉDAGOGIE] réutilisable.
+# [PÉDAGOGIE] CONTRAT — entrées : cmd, cwd ; preuve : l'appelant doit pouvoir vérifier la sortie
+# [PÉDAGOGIE] ou l'effet de bord annoncé.
 def sh(cmd: list[str], cwd: Path = ROOT) -> tuple[int, str]:
     """Lance une commande, renvoie (code, sortie) et l'affiche."""
     print(f"   $ {' '.join(cmd)}")  # affiche la commande (pédagogie/transparence)
@@ -92,32 +126,56 @@ def sh(cmd: list[str], cwd: Path = ROOT) -> tuple[int, str]:
         cmd, cwd=cwd, capture_output=True, text=True
     )  # exécute, capture la sortie
     out = (proc.stdout + proc.stderr).strip()  # concatène sortie standard + erreurs
+    # [PÉDAGOGIE] DÉCISION — cette condition matérialise une règle testable ; lire séparément le
+    # [PÉDAGOGIE] cas vrai et le cas faux.
     if out:
         print("   " + out.replace("\n", "\n   "))  # ré-indente joliment la sortie
+    # [PÉDAGOGIE] SORTIE — cette valeur constitue le contrat remis à l'appelant ; son type et son
+    # [PÉDAGOGIE] sens doivent rester stables.
     return proc.returncode, out  # code 0 = succès ; texte = sortie
 
 
+# [PÉDAGOGIE] BLOC `md5` — unité de responsabilité : isoler un comportement nommable, testable et
+# [PÉDAGOGIE] réutilisable.
+# [PÉDAGOGIE] CONTRAT — entrées : path ; preuve : l'appelant doit pouvoir vérifier la sortie ou
+# [PÉDAGOGIE] l'effet de bord annoncé.
 def md5(path: Path) -> str:
     # Empreinte md5 du fichier (12 1ers caractères) = « signature » d'une version
     # de données. Si le CSV change d'un octet, l'empreinte change → on sait qu'on
     # a une nouvelle version (on l'utilise pour nommer le run MLflow et le tag git).
     h = hashlib.md5()
     h.update(path.read_bytes())
+    # [PÉDAGOGIE] SORTIE — cette valeur constitue le contrat remis à l'appelant ; son type et son
+    # [PÉDAGOGIE] sens doivent rester stables.
     return h.hexdigest()[:12]
 
 
+# [PÉDAGOGIE] BLOC `best_f1_threshold` — unité de responsabilité : isoler un comportement
+# [PÉDAGOGIE] nommable, testable et réutilisable.
+# [PÉDAGOGIE] CONTRAT — entrées : y, proba ; preuve : l'appelant doit pouvoir vérifier la sortie
+# [PÉDAGOGIE] ou l'effet de bord annoncé.
 def best_f1_threshold(y: pd.Series, proba: np.ndarray) -> float:
     """Seuil qui maximise le F1 (calibre sur le TRAIN), pour un point de
     fonctionnement utile au lieu d'un 0.5 arbitraire."""
     # precision_recall_curve renvoie precision, recall et les seuils testés.
     prec, rec, thr = precision_recall_curve(y, proba)
+    # [PÉDAGOGIE] DÉCISION — cette condition matérialise une règle testable ; lire séparément le
+    # [PÉDAGOGIE] cas vrai et le cas faux.
     if len(thr) == 0:  # cas dégénéré (une seule classe) → seuil neutre
+        # [PÉDAGOGIE] SORTIE — cette valeur constitue le contrat remis à l'appelant ; son type et
+        # [PÉDAGOGIE] son sens doivent rester stables.
         return 0.5
     # F1 = moyenne harmonique précision/rappel ; +1e-12 évite la division par zéro.
     f1 = 2 * prec[:-1] * rec[:-1] / (prec[:-1] + rec[:-1] + 1e-12)
+    # [PÉDAGOGIE] SORTIE — cette valeur constitue le contrat remis à l'appelant ; son type et son
+    # [PÉDAGOGIE] sens doivent rester stables.
     return float(thr[int(np.nanargmax(f1))])  # seuil qui donne le meilleur F1
 
 
+# [PÉDAGOGIE] BLOC `make_split` — construction déterministe : produire la même sortie pour les
+# [PÉDAGOGIE] mêmes entrées et paramètres.
+# [PÉDAGOGIE] CONTRAT — entrées : df, test_size, kind ; preuve : vérifier forme, taille, empreinte
+# [PÉDAGOGIE] ou invariants de la sortie.
 def make_split(df: pd.DataFrame, test_size: float, kind: str):
     """kind='temporal' : split temporel PAR MACHINE (honnete, sans fuite).
     kind='stratified' : split iid stratifie (PRATIQUE A FUITE - pour la demo
@@ -125,14 +183,20 @@ def make_split(df: pd.DataFrame, test_size: float, kind: str):
     # --- Mode DÉMO « fuite » : split aléatoire stratifié ---------------------
     # Train et test piochés au hasard → des lignes voisines dans le temps se
     # retrouvent des deux côtés. Le score paraît excellent… mais c'est une ILLUSION.
+    # [PÉDAGOGIE] DÉCISION — cette condition matérialise une règle testable ; lire séparément le
+    # [PÉDAGOGIE] cas vrai et le cas faux.
     if kind == "stratified":
         tr, te = train_test_split(df, test_size=test_size, stratify=df[TARGET], random_state=42)
+        # [PÉDAGOGIE] SORTIE — cette valeur constitue le contrat remis à l'appelant ; son type et
+        # [PÉDAGOGIE] son sens doivent rester stables.
         return tr.reset_index(drop=True), te.reset_index(drop=True), "stratifie (fuite)"
     # --- Mode HONNÊTE : split temporel par machine ---------------------------
     df = df.sort_values(["machine", "timestamp"]).reset_index(
         drop=True
     )  # ordre chronologique par machine
     test_idx: list[int] = []
+    # [PÉDAGOGIE] ITÉRATION — appliquer la même règle à chaque élément permet de raisonner sur un
+    # [PÉDAGOGIE] invariant stable.
     for _, grp in df.groupby("machine"):  # pour chaque machine…
         k = max(1, int(round(len(grp) * test_size)))  # taille du test (au moins 1 ligne)
         test_idx.extend(
@@ -142,13 +206,23 @@ def make_split(df: pd.DataFrame, test_size: float, kind: str):
     train, test = df[~mask], df[mask]  # ~mask = le passé (train), mask = le futur (test)
     # Garde-fou : si le test n'a aucune panne, les métriques (PR-AUC, ROC-AUC)
     # n'ont pas de sens → on bascule sur un split stratifié de secours.
+    # [PÉDAGOGIE] DÉCISION — cette condition matérialise une règle testable ; lire séparément le
+    # [PÉDAGOGIE] cas vrai et le cas faux.
     if test[TARGET].nunique() < 2 or test[TARGET].sum() < 1:
         print("   [!] split temporel sans panne en test -> repli sur stratifie.")
         tr, te = train_test_split(df, test_size=test_size, stratify=df[TARGET], random_state=42)
+        # [PÉDAGOGIE] SORTIE — cette valeur constitue le contrat remis à l'appelant ; son type et
+        # [PÉDAGOGIE] son sens doivent rester stables.
         return tr.reset_index(drop=True), te.reset_index(drop=True), "stratifie (repli)"
+    # [PÉDAGOGIE] SORTIE — cette valeur constitue le contrat remis à l'appelant ; son type et son
+    # [PÉDAGOGIE] sens doivent rester stables.
     return train.reset_index(drop=True), test.reset_index(drop=True), "temporel/machine"
 
 
+# [PÉDAGOGIE] BLOC `main` — orchestration : rendre l'ordre, les dépendances et les points d'échec
+# [PÉDAGOGIE] visibles.
+# [PÉDAGOGIE] CONTRAT — entrées : aucun argument explicite ; preuve : chaque étape doit annoncer
+# [PÉDAGOGIE] sa preuve avant que la suivante ne commence.
 def main() -> int:
     # --- Options de la ligne de commande -------------------------------------
     ap = argparse.ArgumentParser(description="Demo versioning DVC + MLflow")
@@ -185,6 +259,8 @@ def main() -> int:
     ap.add_argument("--no-dvc", action="store_true")  # sauter l'étape DVC
     args = ap.parse_args()
 
+    # [PÉDAGOGIE] DÉCISION — cette condition matérialise une règle testable ; lire séparément le
+    # [PÉDAGOGIE] cas vrai et le cas faux.
     if not args.gold.exists():  # garde-fou : le gold doit exister
         ap.error(f"Gold introuvable : {args.gold} (lance `indusense build-gold`).")
 
@@ -263,8 +339,12 @@ def main() -> int:
 
     # ---------------------------------------------------------------- 2. MLflow
     run_id = None
+    # [PÉDAGOGIE] DÉCISION — cette condition matérialise une règle testable ; lire séparément le
+    # [PÉDAGOGIE] cas vrai et le cas faux.
     if not args.no_mlflow:  # sauf si --no-mlflow
         print("== 2. MLflow (params + metriques + modele + registre) ==")
+        # [PÉDAGOGIE] ERREUR — cette frontière distingue le chemin nominal de la stratégie
+        # [PÉDAGOGIE] explicite de récupération.
         try:
             import mlflow  # import LOCAL : si mlflow manque, on tombe dans l'except plus bas
             import mlflow.sklearn  # sous-module pour journaliser un modèle scikit-learn
@@ -277,6 +357,8 @@ def main() -> int:
             uri = args.tracking_uri or f"sqlite:///{(ROOT / 'mlflow.db').as_posix()}"
             mlflow.set_tracking_uri(uri)  # où MLflow enregistre tout
             mlflow.set_experiment(args.experiment)  # regroupe les runs sous une expérience nommée
+            # [PÉDAGOGIE] RESSOURCE — le gestionnaire de contexte garantit ouverture et
+            # [PÉDAGOGIE] libération, même en cas d'exception.
             with mlflow.start_run(
                 run_name=f"rf-{metadata['gold_md5']}"
             ) as run:  # un « run » = un essai
@@ -298,10 +380,18 @@ def main() -> int:
                 mlflow.log_artifact(str(meta_path))  # joint le fichier de métadonnées au run
                 sig = infer_signature(x_te, proba)  # signature = schéma entrée→sortie du modèle
 
+                # [PÉDAGOGIE] BLOC `_log` — unité de responsabilité : isoler un comportement
+                # [PÉDAGOGIE] nommable, testable et réutilisable.
+                # [PÉDAGOGIE] CONTRAT — entrées : **extra ; preuve : l'appelant doit pouvoir
+                # [PÉDAGOGIE] vérifier la sortie ou l'effet de bord annoncé.
                 def _log(**extra):
                     # Compatibilité : MLflow 3.x attend `name=`, MLflow 2.x `artifact_path=`.
                     # On tente d'abord la syntaxe récente, et on retombe sur l'ancienne si erreur.
+                    # [PÉDAGOGIE] ERREUR — cette frontière distingue le chemin nominal de la
+                    # [PÉDAGOGIE] stratégie explicite de récupération.
                     try:
+                        # [PÉDAGOGIE] SORTIE — cette valeur constitue le contrat remis à
+                        # [PÉDAGOGIE] l'appelant ; son type et son sens doivent rester stables.
                         return mlflow.sklearn.log_model(
                             model_full,
                             name="model",
@@ -310,6 +400,8 @@ def main() -> int:
                             **extra,
                         )
                     except TypeError:
+                        # [PÉDAGOGIE] SORTIE — cette valeur constitue le contrat remis à
+                        # [PÉDAGOGIE] l'appelant ; son type et son sens doivent rester stables.
                         return mlflow.sklearn.log_model(
                             model_full,
                             artifact_path="model",
@@ -318,6 +410,8 @@ def main() -> int:
                             **extra,
                         )
 
+                # [PÉDAGOGIE] ERREUR — cette frontière distingue le chemin nominal de la stratégie
+                # [PÉDAGOGIE] explicite de récupération.
                 try:
                     # Enregistre le modèle au REGISTRE (versions nommées : v1, v2, …).
                     _log(input_example=x_te.head(2), registered_model_name=args.registered_name)
@@ -333,18 +427,28 @@ def main() -> int:
             print(f"   [!] MLflow a echoue : {exc}")
 
     # ---------------------------------------------------------------- 3. DVC
+    # [PÉDAGOGIE] DÉCISION — cette condition matérialise une règle testable ; lire séparément le
+    # [PÉDAGOGIE] cas vrai et le cas faux.
     if not args.no_dvc:  # sauf si --no-dvc
         print("== 3. DVC (versionner data + modele) ==")
+        # [PÉDAGOGIE] DÉCISION — cette condition matérialise une règle testable ; lire séparément
+        # [PÉDAGOGIE] le cas vrai et le cas faux.
         if shutil.which("dvc") is None:  # dvc est-il installé / dans le PATH ?
             print("   [!] dvc non installe -> `uv add dvc`. Etape sautee.")
         else:
+            # [PÉDAGOGIE] DÉCISION — cette condition matérialise une règle testable ; lire
+            # [PÉDAGOGIE] séparément le cas vrai et le cas faux.
             if not (ROOT / ".dvc").exists():  # 1re fois : initialise DVC dans le repo
                 sh(["dvc", "init", "-q"])
+            # [PÉDAGOGIE] DÉCISION — cette condition matérialise une règle testable ; lire
+            # [PÉDAGOGIE] séparément le cas vrai et le cas faux.
             if args.remote:  # configure un « remote » (stockage des gros fichiers)
                 Path(args.remote).mkdir(parents=True, exist_ok=True)
                 sh(["dvc", "remote", "add", "-d", "-f", "localremote", args.remote])
             # Les chemins relatifs à versionner : le gold (données) et le modèle.
             rels = [str(args.gold.relative_to(ROOT)), str(args.model_out.relative_to(ROOT))]
+            # [PÉDAGOGIE] ITÉRATION — appliquer la même règle à chaque élément permet de raisonner
+            # [PÉDAGOGIE] sur un invariant stable.
             for rel in rels:
                 # MIGRATION git → DVC : DVC refuse un fichier déjà suivi par git.
                 # On teste s'il est suivi (git ls-files), et si oui on le sort de l'index git.
@@ -357,6 +461,8 @@ def main() -> int:
                     ).returncode
                     == 0
                 )
+                # [PÉDAGOGIE] DÉCISION — cette condition matérialise une règle testable ; lire
+                # [PÉDAGOGIE] séparément le cas vrai et le cas faux.
                 if tracked:
                     print(f"   [migration git->dvc] {rel} etait suivi par git")
                     sh(
@@ -378,12 +484,20 @@ def main() -> int:
     )
     print(f'   git commit -m "data+model {metadata["gold_md5"]} | PR-AUC {metrics["pr_auc"]}"')
     print(f'   git tag data-{metadata["gold_md5"]}')  # tag = étiquette lisible de cette version
+    # [PÉDAGOGIE] DÉCISION — cette condition matérialise une règle testable ; lire séparément le
+    # [PÉDAGOGIE] cas vrai et le cas faux.
     if args.remote:
         print("   dvc push            # envoie data+modele vers le remote")
     print(f"   git switch --detach data-{metadata['gold_md5']}")
     print("   dvc checkout        # commande suivante, sur une ligne separee")
+    # [PÉDAGOGIE] SORTIE — cette valeur constitue le contrat remis à l'appelant ; son type et son
+    # [PÉDAGOGIE] sens doivent rester stables.
     return 0
 
 
+# [PÉDAGOGIE] DÉCISION — cette condition matérialise une règle testable ; lire séparément le cas
+# [PÉDAGOGIE] vrai et le cas faux.
 if __name__ == "__main__":
+    # [PÉDAGOGIE] FAIL FAST — refuser ici empêche un état invalide de contaminer les étapes
+    # [PÉDAGOGIE] suivantes.
     raise SystemExit(main())  # propage le code de retour au shell

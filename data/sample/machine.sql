@@ -1,5 +1,24 @@
+-- [PÉDAGOGIE] ============================================================================
+-- [PÉDAGOGIE] FICHIER — data/sample/machine.sql
+-- [PÉDAGOGIE] MODULE  — M23 — ingestion hétérogène, normalisation et jointure temporelle
+-- [PÉDAGOGIE] RÔLE    — Transformer plusieurs formats sources en un contrat tabulaire commun et
+-- [PÉDAGOGIE]           fabriquer la cible sans mélange de machines.
+-- [PÉDAGOGIE] THÉORIE — la normalisation d'identifiant rend les jointures explicites
+-- [PÉDAGOGIE]           • merge_asof rapproche des mesures temporelles dans une tolérance
+-- [PÉDAGOGIE]             contrôlée
+-- [PÉDAGOGIE]           • la clé machine et l'ordre chronologique empêchent une association
+-- [PÉDAGOGIE]             inter-équipements
+-- [PÉDAGOGIE] À VOIR  — Contrôler schéma, nombre de lignes perdues, ordre des dates et
+-- [PÉDAGOGIE]           distribution de la cible.
+-- [PÉDAGOGIE] PIÈGE   — Dans les fichiers SQL, ne jamais ajouter en commentaire un faux tuple
+-- [PÉDAGOGIE]           ressemblant aux données chargées.
+-- [PÉDAGOGIE] GARDE   — Toutes les lignes marquées [PÉDAGOGIE] sont des commentaires : elles
+-- [PÉDAGOGIE]           guident la lecture sans changer l'exécution.
+-- [PÉDAGOGIE] ============================================================================
+
 -- InduSense 4.0 - référentiel machines (PostgreSQL)
 BEGIN;
+-- [PÉDAGOGIE] SCHÉMA — déclare une structure et les invariants portés par la base.
 CREATE TABLE IF NOT EXISTS machine (
     machine_code            VARCHAR(16) PRIMARY KEY,
     commissioning_date      DATE NOT NULL,
@@ -14,8 +33,11 @@ CREATE TABLE IF NOT EXISTS machine (
 );
 
 -- Petit index utile pour les jointures / filtrages
+-- [PÉDAGOGIE] SCHÉMA — déclare une structure et les invariants portés par la base.
 CREATE INDEX IF NOT EXISTS idx_machine_line ON machine(production_line);
+-- [PÉDAGOGIE] SCHÉMA — déclare une structure et les invariants portés par la base.
 CREATE INDEX IF NOT EXISTS idx_machine_location ON machine(location);
+-- [PÉDAGOGIE] CHARGEMENT — ajoute le jeu de données de référence dans un ordre reproductible.
 INSERT INTO machine (machine_code, commissioning_date, max_daily_capacity, model, production_line, location, criticality)
 VALUES
 ('MACH-01', '2021-05-12', 770, 'InduPress-X2', 'Ligne-A', 'Atelier-2', 'MEDIUM'),
