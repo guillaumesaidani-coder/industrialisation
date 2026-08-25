@@ -1,0 +1,171 @@
+<title>Endpoints & schémas — API FastAPI</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Serif:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --ink: #16211f; --muted: #4f5d55; --paper: #eef0ea; --raised: #ffffff;
+    --line: #ccd3c8; --accent: #0f6e5c; --accent-ink: #084537; --accent-soft: #d7ece5;
+    --warn: #a8551f; --warn-soft: #f3e2d1;
+    --code-bg: #101917; --code-ink: #d9ffe9; --code-dim: #7fa694;
+    --font-display: "IBM Plex Sans Condensed", "Arial Narrow", sans-serif;
+    --font-body: "IBM Plex Serif", Georgia, "Times New Roman", serif;
+    --font-mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ink: #e7efe9; --muted: #9fb2a7; --paper: #0f1613; --raised: #161f1b;
+      --line: #29352f; --accent: #52d3af; --accent-ink: #bdf3dd; --accent-soft: #17332b;
+      --warn: #f0a35f; --warn-soft: #37281a; --code-bg: #0a0f0d; --code-ink: #baffd9; --code-dim: #5c7d6d;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ink: #e7efe9; --muted: #9fb2a7; --paper: #0f1613; --raised: #161f1b;
+    --line: #29352f; --accent: #52d3af; --accent-ink: #bdf3dd; --accent-soft: #17332b;
+    --warn: #f0a35f; --warn-soft: #37281a; --code-bg: #0a0f0d; --code-ink: #baffd9; --code-dim: #5c7d6d;
+  }
+  *{ box-sizing: border-box; }
+  body{ margin:0; background: var(--paper); color: var(--ink); font-family: var(--font-body); font-size: 17px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+  ::selection{ background: var(--accent-soft); color: var(--accent-ink); }
+  a{ color: var(--accent-ink); text-decoration-color: var(--accent); text-underline-offset: 3px; }
+
+  .page{ max-width: 760px; margin: 0 auto; padding: clamp(28px,6vw,64px) 24px 96px; }
+
+  .eyebrow{ font-family: var(--font-display); font-weight:600; font-size:.78rem; letter-spacing:.11em; text-transform:uppercase; color: var(--accent-ink); display:flex; align-items:center; gap:.6em; }
+  .eyebrow::before{ content:""; width:20px; height:2px; background: var(--accent); display:inline-block; }
+
+  header.masthead{ border-bottom:1px solid var(--line); padding-bottom:28px; margin-bottom:40px; }
+  .breadcrumb{ font-family: var(--font-mono); font-size:.82rem; color: var(--muted); margin:0 0 18px; }
+  .breadcrumb span{ color: var(--ink); }
+  h1{ font-family: var(--font-display); font-weight:700; font-size: clamp(2rem,5vw,2.7rem); line-height:1.06; letter-spacing:-.01em; margin:0 0 12px; text-wrap: balance; }
+  .lede{ font-size:1.08rem; color: var(--muted); max-width:58ch; margin:0 0 20px; }
+  .status-row{ display:flex; flex-wrap:wrap; align-items:center; gap:12px; }
+  .status-chip{ display:inline-flex; align-items:center; gap:8px; font-family: var(--font-display); font-weight:600; font-size:.82rem; letter-spacing:.03em; padding:7px 14px 7px 10px; border-radius:999px; background: var(--accent-soft); color: var(--accent-ink); }
+  .status-chip svg{ width:15px; height:15px; flex:none; }
+  .meta-line{ font-family: var(--font-mono); font-size:.82rem; color: var(--muted); }
+
+  section{ margin:52px 0; }
+  section > h2{ font-family: var(--font-body); font-weight:600; font-style:italic; font-size:1.5rem; margin:8px 0 16px; text-wrap: balance; }
+  section > p{ max-width:66ch; }
+  section > p + p{ margin-top:1em; }
+
+  .callout{ border-left:3px solid var(--accent); background: var(--accent-soft); color: var(--ink); padding:14px 18px; border-radius:4px; font-size:.96rem; margin:20px 0; }
+  .callout.warn{ border-color: var(--warn); background: var(--warn-soft); }
+  .callout strong{ font-family: var(--font-display); font-weight:600; }
+
+  .terminal{ background: var(--code-bg); border-radius:8px; overflow:hidden; margin:20px 0; box-shadow: 0 1px 0 rgba(0,0,0,.2); }
+  .terminal-bar{ display:flex; align-items:center; gap:8px; padding:9px 14px; border-bottom:1px solid rgba(255,255,255,.06); }
+  .terminal-bar .dot{ width:8px; height:8px; border-radius:50%; background: var(--code-dim); opacity:.6; }
+  .terminal-bar .label{ font-family: var(--font-mono); font-size:.76rem; color: var(--code-dim); margin-left:6px; }
+  .terminal pre{ margin:0; padding:16px; overflow-x:auto; font-family: var(--font-mono); font-size:.85rem; line-height:1.55; color: var(--code-ink); }
+  .terminal .ok{ color:#8fe8bd; }
+  .terminal .fail{ color:#ff9f8f; }
+  .terminal .dim{ color: var(--code-dim); }
+
+  .tp{ border:1px solid var(--line); background: var(--raised); border-radius:10px; padding:22px 24px; margin:22px 0; }
+  .tp-head{ display:flex; align-items:baseline; gap:12px; margin-bottom:10px; }
+  .tp-num{ font-family: var(--font-mono); font-size:.82rem; color: var(--accent-ink); background: var(--accent-soft); padding:2px 8px; border-radius:4px; flex:none; }
+  .tp-title{ font-family: var(--font-display); font-weight:600; font-size:1.12rem; }
+  .tp p{ margin:.7em 0; }
+  code{ font-family: var(--font-mono); font-size:.88em; background: var(--accent-soft); color: var(--accent-ink); padding:.1em .35em; border-radius:4px; }
+
+  table.contract{ width:100%; border-collapse:collapse; font-size:.92rem; margin:14px 0; }
+  table.contract th, table.contract td{ text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); font-family: var(--font-mono); font-size:.84rem; }
+  table.contract th{ font-family: var(--font-display); font-size:.74rem; letter-spacing:.06em; text-transform:uppercase; color: var(--muted); font-weight:600; }
+
+  .checklist{ display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:12px; margin:20px 0; }
+  .check-item{ display:flex; align-items:flex-start; gap:10px; background: var(--raised); border:1px solid var(--line); border-radius:8px; padding:14px 16px; }
+  .check-item svg{ width:18px; height:18px; flex:none; margin-top:2px; color: var(--accent); }
+  .check-item .cmd{ font-family: var(--font-mono); font-size:.82rem; color: var(--ink); display:block; }
+  .check-item .result{ font-family: var(--font-mono); font-size:.78rem; color: var(--muted); display:block; margin-top:2px; }
+
+  dl.glossary{ margin:16px 0; }
+  dl.glossary div{ display:grid; grid-template-columns:160px 1fr; gap:16px; padding:12px 0; border-bottom:1px solid var(--line); }
+  @media (max-width:560px){ dl.glossary div{ grid-template-columns:1fr; gap:4px; } }
+  dl.glossary dt{ font-family: var(--font-display); font-weight:600; font-size:.86rem; color: var(--accent-ink); }
+  dl.glossary dd{ margin:0; color: var(--ink); }
+
+  footer{ margin-top:64px; padding-top:24px; border-top:1px solid var(--line); display:flex; flex-wrap:wrap; justify-content:space-between; gap:12px; font-family: var(--font-mono); font-size:.8rem; color: var(--muted); }
+  @media (prefers-reduced-motion: reduce){ *{ scroll-behavior:auto !important; } }
+</style>
+
+<div class="page">
+
+  <header class="masthead">
+    <p class="breadcrumb">CISIA · Sprint 3 · J2 matin · <span>Module 25 — TP1</span></p>
+    <h1>Un contrat HTTP, pas une fonction Python</h1>
+    <p class="lede">L'API expose le modèle derrière trois routes précises — <code>/health</code>, <code>/ready</code>, <code>/predict-tabular</code> — chacune avec un rôle et des codes de réponse définis à l'avance, avant même d'écrire une ligne de logique métier.</p>
+    <div class="status-row">
+      <span class="status-chip">
+        <svg viewBox="0 0 20 20" fill="none"><path d="M4 10.5l4 4 8-9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        TP validé — contrat testé de bout en bout
+      </span>
+      <span class="meta-line">jalon 03 · branche guillaume-saidani</span>
+    </div>
+  </header>
+
+  <section>
+    <p class="eyebrow">Pourquoi</p>
+    <h2>Liveness ≠ readiness</h2>
+    <p>Une API de modèle pose une question différente selon le moment : <strong>le process tourne-t-il ?</strong> (liveness) et <strong>le modèle est-il chargé et prêt à répondre ?</strong> (readiness). Les confondre casse le monitoring : un orchestrateur qui redémarre le service parce que le modèle met du temps à charger provoque une boucle de redémarrages sans fin.</p>
+    <div class="callout">
+      <strong><code>/health</code> vs <code>/ready</code>.</strong> <code>/health</code> répond 200 dès que le process a démarré, modèle chargé ou pas — c'est la sonde de liveness. <code>/ready</code> répond 503 tant que le modèle n'est pas en mémoire — c'est la sonde de readiness, celle qui protège <code>/predict-tabular</code> d'un appel voué à échouer.
+    </div>
+    <p>Dans <code>src/indusense/api/</code>, trois fichiers séparent les responsabilités : <code>main.py</code> déclare les routes, <code>model_store.py</code> gère le chargement et l'injection du modèle, <code>schemas.py</code> définit les formes Pydantic des requêtes et réponses.</p>
+  </section>
+
+  <section>
+    <p class="eyebrow">Le contrat</p>
+    <h2>Trois routes, trois réponses</h2>
+    <table class="contract">
+      <tr><th>Route</th><th>Rôle</th><th>Codes possibles</th></tr>
+      <tr><td>GET /health</td><td>liveness — le process répond</td><td>200</td></tr>
+      <tr><td>GET /ready</td><td>readiness — le modèle est chargé</td><td>200 · 503</td></tr>
+      <tr><td>POST /predict-tabular</td><td>prédiction sur des relevés machine</td><td>200 · 401 · 422 · 503</td></tr>
+    </table>
+    <p>La réponse nominale de <code>/predict-tabular</code> est définie par <code>schemas.py</code> avec quatre champs obligatoires :</p>
+    <dl class="glossary">
+      <div><dt>proba_panne</dt><dd>probabilité de panne estimée par le modèle, entre 0.0 et 1.0</dd></div>
+      <div><dt>decision</dt><dd>lecture humaine de la probabilité : <code>"alerte"</code> ou <code>"ok"</code></dd></div>
+      <div><dt>model_version</dt><dd>version du modèle ayant produit cette prédiction précise</dd></div>
+      <div><dt>threshold</dt><dd>seuil de décision utilisé pour transformer la probabilité en <code>decision</code></dd></div>
+    </dl>
+  </section>
+
+  <section>
+    <p class="eyebrow">TP 1</p>
+    <div class="tp">
+      <div class="tp-head"><span class="tp-num">TP 1</span><span class="tp-title">Appeler <code>/predict-tabular</code> depuis <code>/docs</code></span></div>
+      <p>Uvicorn lancé, <code>/docs</code> ouvert dans le navigateur (Swagger UI généré automatiquement depuis le code — la doc ne peut pas mentir sur le contrat), puis appel réel avec l'en-tête <code>X-API-Key</code> et un corps <code>payload.json</code> contenant au moins 7 relevés.</p>
+      <p>Le même appel, rejoué ici via <code>TestClient</code> (le client de test qui simule une requête HTTP sans ouvrir de port réseau), donne exactement :</p>
+      <div class="terminal">
+        <div class="terminal-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="label">POST /predict-tabular — X-API-Key: dev-key</span></div>
+        <pre><span class="dim">→</span> {"machine_id": "MACH-07", "readings": [ ... 8 relevés horaires ... ]}
+
+<span class="ok">200 OK</span>
+{
+  "machine_id": "MACH-07",
+  "proba_panne": 0.5,
+  "decision": "alerte",
+  "model_version": "test",
+  "threshold": 0.5
+}</pre>
+      </div>
+      <p>Les quatre champs du contrat sont bien présents ; <code>decision</code> vaut <code>"alerte"</code> car <code>proba_panne</code> (0.5) atteint le <code>threshold</code> (0.5).</p>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">Repères</p>
+    <h2>Pourquoi charger le modèle une seule fois</h2>
+    <dl class="glossary">
+      <div><dt>lifespan</dt><dd>le modèle est chargé <strong>une fois</strong> au démarrage du serveur, pas à chaque requête — sinon la latence exploserait.</dd></div>
+      <div><dt>Pydantic</dt><dd>valide la forme du corps de requête <em>avant</em> d'appeler le modèle : un payload cassé ne consomme jamais de calcul ML.</dd></div>
+      <div><dt><code>/docs</code></dt><dd>généré depuis les schémas Pydantic et les annotations de route — un changement de code se répercute automatiquement dans la documentation.</dd></div>
+    </dl>
+  </section>
+
+  <footer>
+    <span>Prochaine étape : TP2 — TestClient et les quatre codes d'erreur</span>
+    <span>guillaume.saidani@ext.aelion.fr</span>
+  </footer>
+
+</div>

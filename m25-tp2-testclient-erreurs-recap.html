@@ -1,0 +1,179 @@
+<title>TestClient & codes d'erreur — API</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Serif:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --ink: #16211f; --muted: #4f5d55; --paper: #eef0ea; --raised: #ffffff;
+    --line: #ccd3c8; --accent: #0f6e5c; --accent-ink: #084537; --accent-soft: #d7ece5;
+    --warn: #a8551f; --warn-soft: #f3e2d1;
+    --code-bg: #101917; --code-ink: #d9ffe9; --code-dim: #7fa694;
+    --font-display: "IBM Plex Sans Condensed", "Arial Narrow", sans-serif;
+    --font-body: "IBM Plex Serif", Georgia, "Times New Roman", serif;
+    --font-mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ink: #e7efe9; --muted: #9fb2a7; --paper: #0f1613; --raised: #161f1b;
+      --line: #29352f; --accent: #52d3af; --accent-ink: #bdf3dd; --accent-soft: #17332b;
+      --warn: #f0a35f; --warn-soft: #37281a; --code-bg: #0a0f0d; --code-ink: #baffd9; --code-dim: #5c7d6d;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ink: #e7efe9; --muted: #9fb2a7; --paper: #0f1613; --raised: #161f1b;
+    --line: #29352f; --accent: #52d3af; --accent-ink: #bdf3dd; --accent-soft: #17332b;
+    --warn: #f0a35f; --warn-soft: #37281a; --code-bg: #0a0f0d; --code-ink: #baffd9; --code-dim: #5c7d6d;
+  }
+  *{ box-sizing: border-box; }
+  body{ margin:0; background: var(--paper); color: var(--ink); font-family: var(--font-body); font-size: 17px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+  ::selection{ background: var(--accent-soft); color: var(--accent-ink); }
+  a{ color: var(--accent-ink); text-decoration-color: var(--accent); text-underline-offset: 3px; }
+
+  .page{ max-width: 760px; margin: 0 auto; padding: clamp(28px,6vw,64px) 24px 96px; }
+
+  .eyebrow{ font-family: var(--font-display); font-weight:600; font-size:.78rem; letter-spacing:.11em; text-transform:uppercase; color: var(--accent-ink); display:flex; align-items:center; gap:.6em; }
+  .eyebrow::before{ content:""; width:20px; height:2px; background: var(--accent); display:inline-block; }
+
+  header.masthead{ border-bottom:1px solid var(--line); padding-bottom:28px; margin-bottom:40px; }
+  .breadcrumb{ font-family: var(--font-mono); font-size:.82rem; color: var(--muted); margin:0 0 18px; }
+  .breadcrumb span{ color: var(--ink); }
+  h1{ font-family: var(--font-display); font-weight:700; font-size: clamp(2rem,5vw,2.7rem); line-height:1.06; letter-spacing:-.01em; margin:0 0 12px; text-wrap: balance; }
+  .lede{ font-size:1.08rem; color: var(--muted); max-width:58ch; margin:0 0 20px; }
+  .status-row{ display:flex; flex-wrap:wrap; align-items:center; gap:12px; }
+  .status-chip{ display:inline-flex; align-items:center; gap:8px; font-family: var(--font-display); font-weight:600; font-size:.82rem; letter-spacing:.03em; padding:7px 14px 7px 10px; border-radius:999px; background: var(--accent-soft); color: var(--accent-ink); }
+  .status-chip svg{ width:15px; height:15px; flex:none; }
+  .meta-line{ font-family: var(--font-mono); font-size:.82rem; color: var(--muted); }
+
+  section{ margin:52px 0; }
+  section > h2{ font-family: var(--font-body); font-weight:600; font-style:italic; font-size:1.5rem; margin:8px 0 16px; text-wrap: balance; }
+  section > p{ max-width:66ch; }
+  section > p + p{ margin-top:1em; }
+
+  .callout{ border-left:3px solid var(--accent); background: var(--accent-soft); color: var(--ink); padding:14px 18px; border-radius:4px; font-size:.96rem; margin:20px 0; }
+  .callout.warn{ border-color: var(--warn); background: var(--warn-soft); }
+  .callout strong{ font-family: var(--font-display); font-weight:600; }
+
+  .terminal{ background: var(--code-bg); border-radius:8px; overflow:hidden; margin:20px 0; box-shadow: 0 1px 0 rgba(0,0,0,.2); }
+  .terminal-bar{ display:flex; align-items:center; gap:8px; padding:9px 14px; border-bottom:1px solid rgba(255,255,255,.06); }
+  .terminal-bar .dot{ width:8px; height:8px; border-radius:50%; background: var(--code-dim); opacity:.6; }
+  .terminal-bar .label{ font-family: var(--font-mono); font-size:.76rem; color: var(--code-dim); margin-left:6px; }
+  .terminal pre{ margin:0; padding:16px; overflow-x:auto; font-family: var(--font-mono); font-size:.85rem; line-height:1.55; color: var(--code-ink); }
+  .terminal .ok{ color:#8fe8bd; }
+  .terminal .fail{ color:#ff9f8f; }
+  .terminal .dim{ color: var(--code-dim); }
+
+  .tp{ border:1px solid var(--line); background: var(--raised); border-radius:10px; padding:22px 24px; margin:22px 0; }
+  .tp-head{ display:flex; align-items:baseline; gap:12px; margin-bottom:10px; }
+  .tp-num{ font-family: var(--font-mono); font-size:.82rem; color: var(--accent-ink); background: var(--accent-soft); padding:2px 8px; border-radius:4px; flex:none; }
+  .tp-title{ font-family: var(--font-display); font-weight:600; font-size:1.12rem; }
+  .tp p{ margin:.7em 0; }
+  code{ font-family: var(--font-mono); font-size:.88em; background: var(--accent-soft); color: var(--accent-ink); padding:.1em .35em; border-radius:4px; }
+
+  table.contract{ width:100%; border-collapse:collapse; font-size:.92rem; margin:14px 0; }
+  table.contract th, table.contract td{ text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); font-family: var(--font-mono); font-size:.84rem; }
+  table.contract th{ font-family: var(--font-display); font-size:.74rem; letter-spacing:.06em; text-transform:uppercase; color: var(--muted); font-weight:600; }
+
+  .checklist{ display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:12px; margin:20px 0; }
+  .check-item{ display:flex; align-items:flex-start; gap:10px; background: var(--raised); border:1px solid var(--line); border-radius:8px; padding:14px 16px; }
+  .check-item svg{ width:18px; height:18px; flex:none; margin-top:2px; color: var(--accent); }
+  .check-item .cmd{ font-family: var(--font-mono); font-size:.82rem; color: var(--ink); display:block; }
+  .check-item .result{ font-family: var(--font-mono); font-size:.78rem; color: var(--muted); display:block; margin-top:2px; }
+
+  dl.glossary{ margin:16px 0; }
+  dl.glossary div{ display:grid; grid-template-columns:160px 1fr; gap:16px; padding:12px 0; border-bottom:1px solid var(--line); }
+  @media (max-width:560px){ dl.glossary div{ grid-template-columns:1fr; gap:4px; } }
+  dl.glossary dt{ font-family: var(--font-display); font-weight:600; font-size:.86rem; color: var(--accent-ink); }
+  dl.glossary dd{ margin:0; color: var(--ink); }
+
+  footer{ margin-top:64px; padding-top:24px; border-top:1px solid var(--line); display:flex; flex-wrap:wrap; justify-content:space-between; gap:12px; font-family: var(--font-mono); font-size:.8rem; color: var(--muted); }
+  @media (prefers-reduced-motion: reduce){ *{ scroll-behavior:auto !important; } }
+</style>
+
+<div class="page">
+
+  <header class="masthead">
+    <p class="breadcrumb">CISIA · Sprint 3 · J2 matin · <span>Module 25 — TP2</span></p>
+    <h1>Un faux navigateur, un faux modèle</h1>
+    <p class="lede">Prouver les quatre codes de réponse (200, 401, 422, 503) sans jamais ouvrir un vrai port réseau ni charger le vrai modèle entraîné : <code>TestClient</code> et <code>dependency_overrides</code> font le travail.</p>
+    <div class="status-row">
+      <span class="status-chip">
+        <svg viewBox="0 0 20 20" fill="none"><path d="M4 10.5l4 4 8-9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        TP validé — 12 tests verts
+      </span>
+      <span class="meta-line">jalon 03 · branche guillaume-saidani</span>
+    </div>
+  </header>
+
+  <section>
+    <p class="eyebrow">Pourquoi</p>
+    <h2>Tester sans serveur, prédire sans vrai modèle</h2>
+    <p><code>TestClient</code> (FastAPI/Starlette) envoie de vraies requêtes HTTP à l'application <strong>en mémoire</strong>, sans ouvrir de socket réseau — rapide et déterministe. <code>app.dependency_overrides</code> remplace la dépendance qui fournit normalement le modèle réel par une fonction jouet (<code>_bundle</code>) : un petit <code>RandomForestClassifier</code> entraîné en quelques millisecondes sur des données inventées, plutôt que de charger le gros fichier <code>rf.joblib</code> depuis le disque à chaque test.</p>
+    <div class="callout">
+      <strong>Règle d'or 4xx / 5xx.</strong> Une mauvaise saisie du client (clé manquante, corps invalide, identifiant sans numéro) doit toujours produire un <strong>4xx</strong> — jamais un <strong>500</strong> (bug serveur non géré). Un <code>ValueError</code> levé par la normalisation d'un <code>machine_id</code> invalide comme <code>"NOPE"</code> est attrapé et transformé en 422, pas laissé remonter en crash.
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">TP 2</p>
+    <div class="tp">
+      <div class="tp-head"><span class="tp-num">TP 2</span><span class="tp-title">Appliquer la surcouche M25, puis rejouer la suite</span></div>
+      <p>La surcouche <code>tp_api_m25_v1_20260823</code> installe les tests <code>test_api.py</code>, <code>test_readiness_probe.py</code> et <code>test_model_card_gate.py</code> (annoncée <code>M25_OVERLAY=READY</code>), puis la suite complète tourne :</p>
+      <div class="terminal">
+        <div class="terminal-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="label">uv run pytest -v tests/test_api.py tests/test_readiness_probe.py tests/test_model_card_gate.py</span></div>
+        <pre>tests/test_api.py::test_health_ok <span class="ok">PASSED</span>
+tests/test_api.py::test_missing_api_key_returns_401 <span class="ok">PASSED</span>
+tests/test_api.py::test_insufficient_readings_returns_422 <span class="ok">PASSED</span>
+tests/test_api.py::test_predict_ok_with_bundle <span class="ok">PASSED</span>
+tests/test_api.py::test_predict_normalizes_noncanonical_machine_id <span class="ok">PASSED</span>
+tests/test_api.py::test_predict_invalid_machine_id_returns_422 <span class="ok">PASSED</span>
+tests/test_readiness_probe.py::test_ready_returns_exact_503_when_model_is_unavailable <span class="ok">PASSED</span>
+tests/test_readiness_probe.py::test_predict_tabular_returns_exact_503_after_auth_and_validation <span class="ok">PASSED</span>
+tests/test_model_card_gate.py::test_template_passes_structure_but_keeps_c5_not_ready <span class="ok">PASSED</span>
+tests/test_model_card_gate.py::test_strict_c5_rejects_the_unmeasured_template <span class="ok">PASSED</span>
+tests/test_model_card_gate.py::test_strict_c5_accepts_measured_fields_with_local_evidence <span class="ok">PASSED</span>
+tests/test_model_card_gate.py::test_marine_value_outside_benchmark_section_is_rejected <span class="ok">PASSED</span>
+
+<span class="ok">12 passed</span> in 2.17s</pre>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">Les quatre codes</p>
+    <h2>Chaque code, sa cause exacte</h2>
+    <p>Rejoués un par un via <code>TestClient</code>, chacun renvoie exactement le corps que le code produit — rien d'inventé :</p>
+    <div class="terminal">
+      <div class="terminal-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="label">4 appels POST /predict-tabular</span></div>
+      <pre>sans en-tête X-API-Key
+<span class="fail">401</span> {"detail": "Cle API absente ou invalide"}
+
+avec clé, readings=[] (0 relevé, minimum 7)
+<span class="fail">422</span> {"detail": [{"type": "too_short", "loc": ["body", "readings"],
+             "msg": "List should have at least 7 items after validation, not 0"}]}
+
+avec clé, 8 relevés, modèle indisponible (dependency_overrides -> None)
+<span class="fail">503</span> {"detail": "Modele non charge"}
+
+avec clé, 8 relevés, modèle jouet injecté
+<span class="ok">200</span> {"machine_id": "MACH-07", "proba_panne": 0.5, "decision": "alerte",
+      "model_version": "test", "threshold": 0.5}</pre>
+    </div>
+    <div class="callout">
+      <strong>401 avant 422.</strong> L'authentification est vérifiée <em>avant</em> la validation Pydantic du corps — une requête sans clé est rejetée sans même lire son contenu, quel qu'il soit.
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">Bord testé</p>
+    <h2>La normalisation ne réécrit pas la sortie</h2>
+    <p>Un client peut envoyer <code>"M-7"</code> (non canonique). En interne, l'API le normalise en <code>"MACH-07"</code> pour retrouver la bonne machine — mais la réponse renvoie la valeur <strong>brute</strong> telle qu'envoyée, jamais réécrite :</p>
+    <div class="checklist">
+      <div class="check-item"><svg viewBox="0 0 20 20" fill="none"><path d="M4 10.5l4 4 8-9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span><span class="cmd">machine_id: "M-7" → 200</span><span class="result">réponse: machine_id == "M-7" (brut conservé)</span></span></div>
+      <div class="check-item"><svg viewBox="0 0 20 20" fill="none"><path d="M4 10.5l4 4 8-9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span><span class="cmd">machine_id: "NOPE" → 422</span><span class="result">aucun numéro exploitable, jamais 500</span></span></div>
+    </div>
+  </section>
+
+  <footer>
+    <span>Prochaine étape : TP3 — request-id et normalisation au bord</span>
+    <span>guillaume.saidani@ext.aelion.fr</span>
+  </footer>
+
+</div>
