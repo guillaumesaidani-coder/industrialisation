@@ -59,3 +59,13 @@ build/
 # [PÉDAGOGIE] EXCLUSION — ce motif retire un artefact généré, local ou sensible du périmètre
 # [PÉDAGOGIE] concerné.
 !artifacts/models/model_metadata.json
+
+# [PÉDAGOGIE] EXCLUSION — ce motif retire un artefact généré, local ou sensible du périmètre
+# [PÉDAGOGIE] concerné.
+PACK_APPRENANTS_SPRINT3_CISIA_20260824/
+# [PÉDAGOGIE] EXCLUSION — ce motif retire un artefact généré, local ou sensible du périmètre
+# [PÉDAGOGIE] concerné.
+mlflow.db
+# [PÉDAGOGIE] EXCLUSION — ce motif retire un artefact généré, local ou sensible du périmètre
+# [PÉDAGOGIE] concerné.
+mlruns/
