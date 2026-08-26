@@ -34,11 +34,13 @@ PRINCIPE DE CE FICHIER
     l'enchaînement devient un `@flow`. C'est la séparation orchestration / métier.
 
 COMMANDES (depuis indusense-skeleton/, après `uv sync --extra dev`)
-    uv run prefect cloud login              # 1 seule fois : relier le poste au compte Cloud
-    uv run python flows/pipeline.py         # exécuter le pipeline → visible dans l'UI Cloud
-    uv run python flows/pipeline.py --serve # créer un déploiement planifié (voir README.md)
+    Définir d'abord PREFECT_PROFILE=ephemeral comme indiqué dans le guide
+    multiplateforme, puis lancer :
+    uv run python flows/pipeline.py         # exécuter le pipeline avec le profil local
+    uv run python flows/pipeline.py --serve # déploiement local optionnel (Ctrl+C pour arrêter)
 
-Pas-à-pas complet (création compte, quoi regarder dans l'UI...) : flows/README.md
+Pas-à-pas complet (profil local et preuves à observer) :
+FORMATION/GUIDE_MULTIPLATEFORME_APPRENANT.md
 """
 
 # [PÉDAGOGIE] DÉPENDANCE — __future__ : apporte une dépendance explicitement visible au lecteur.
@@ -236,18 +238,20 @@ if __name__ == "__main__":
     # [PÉDAGOGIE] DÉCISION — cette condition matérialise une règle testable ; lire séparément le
     # [PÉDAGOGIE] cas vrai et le cas faux.
     if "--serve" in sys.argv:
-        # MODE DÉPLOIEMENT : `serve()` enregistre un "deployment" planifié dans
-        # Prefect Cloud et transforme CE process en mini-worker local qui exécute
-        # les runs. Tant qu'il tourne (Ctrl+C pour arrêter) :
+        # MODE DÉPLOIEMENT LOCAL : `serve()` enregistre un déploiement avec le profil
+        # Prefect courant et transforme CE process en mini-worker qui exécute les runs.
+        # Pour la formation, le profil doit rester `ephemeral`. Tant qu'il tourne
+        # (Ctrl+C pour arrêter) :
         #   - exécution automatique toutes les heures (interval=3600 s) ;
-        #   - déclenchement à la demande depuis l'UI : Deployments → Run.
-        # Pas d'infra à gérer : idéal pour la démo. En prod réelle : workers + work pools.
+        #   - logs et états restent observables localement.
+        # Aucun compte Prefect Cloud n'est requis pour cette démo. En production réelle :
+        # workers + work pools et backend d'orchestration validé par l'équipe.
         pipeline_indusense.serve(
             name="indusense-horaire",
             interval=3600,
             tags=["indusense", "sprint3"],
         )
     else:
-        # MODE SIMPLE : une exécution immédiate, tracée dans le Cloud si le poste
-        # est connecté (`prefect cloud login`), sinon suivie par un serveur local éphémère.
+        # MODE SIMPLE : une exécution immédiate avec le profil courant. Le parcours de
+        # formation impose `ephemeral`; aucun `prefect cloud login` n'est nécessaire.
         pipeline_indusense()
