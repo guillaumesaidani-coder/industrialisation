@@ -50,7 +50,7 @@ $lockPath = Join-Path $project "uv.lock"
 if (-not (Test-Path -LiteralPath $lockPath)) {
     # [PÉDAGOGIE] ÉTAPE — lire cette commande comme une intention, puis identifier la preuve qui
     # [PÉDAGOGIE] autorise la suite.
-    throw "Le dossier cible n'est pas la racine de CISIA_29062026 : uv.lock absent."
+    throw "Le dossier cible n'est pas la racine du dépôt InduSense : uv.lock absent."
 # [PÉDAGOGIE] ÉTAPE — lire cette commande comme une intention, puis identifier la preuve qui
 # [PÉDAGOGIE] autorise la suite.
 }
