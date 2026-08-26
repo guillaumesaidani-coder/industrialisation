@@ -292,9 +292,7 @@ def main() -> int:
                     }
                 )
                 # MÉTRIQUES (résultats chiffrés) : on ne garde que les valeurs numériques.
-                mlflow.log_metrics(
-                    {k: v for k, v in metrics.items() if isinstance(v, (int, float))}
-                )
+                mlflow.log_metrics({k: v for k, v in metrics.items() if isinstance(v, int | float)})
                 # TAGS (étiquettes libres) : on trace la source et la signature des données.
                 mlflow.set_tags({"dataset": metadata["dataset"], "gold_md5": metadata["gold_md5"]})
                 mlflow.log_artifact(str(meta_path))  # joint le fichier de métadonnées au run
