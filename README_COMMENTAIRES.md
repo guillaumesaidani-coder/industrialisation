@@ -102,7 +102,7 @@ ni cache. Les données pédagogiques et le modèle de démonstration nécessaire
 
 > Le dépôt est déjà versionné. Après le clone, crée seulement ta branche de travail :
 > ```
-> cd CISIA_29062026
+> cd CISIA_24082026_Parcours
 > git switch -c prenom-nom
 > ```
 
