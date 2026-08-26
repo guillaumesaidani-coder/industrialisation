@@ -1,0 +1,15 @@
+# [PÉDAGOGIE] FICHIER — monitoring/grafana/provisioning/datasources/prometheus.yml
+# [PÉDAGOGIE] RÔLE — provisionner AUTOMATIQUEMENT la source de données Prometheus dans Grafana,
+# [PÉDAGOGIE]        sans clic manuel dans l'UI. Grafana lit ce dossier au démarrage.
+# [PÉDAGOGIE] URL — "http://prometheus:9090" : nom du service Compose, pas localhost (Grafana
+# [PÉDAGOGIE]       appelle Prometheus depuis SON réseau conteneur, pas depuis l'hôte).
+
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false

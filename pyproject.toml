@@ -145,6 +145,11 @@ dev = [
     # [PÉDAGOGIE] ÉLÉMENT — cette entrée appartient à la liste déclarative ouverte juste
     # [PÉDAGOGIE] au-dessus.
     "pre-commit>=3.7",
+    # requests : client HTTP simple pour le smoke test Compose (module 28), qui
+    # tape la stack réelle (API/Prometheus/Grafana) et non un TestClient in-process.
+    # [PÉDAGOGIE] ÉLÉMENT — cette entrée appartient à la liste déclarative ouverte juste
+    # [PÉDAGOGIE] au-dessus.
+    "requests>=2.31",
 ]
 # [PÉDAGOGIE] RÉGLAGE `mlops` — valeur déclarative lue par l'outil associé à cette section.
 mlops = [

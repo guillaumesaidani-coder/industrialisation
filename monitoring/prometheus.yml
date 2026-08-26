@@ -1,0 +1,24 @@
+# [PÉDAGOGIE] ============================================================================
+# [PÉDAGOGIE] FICHIER — monitoring/prometheus.yml
+# [PÉDAGOGIE] MODULE  — M28 — orchestration Compose et readiness inter-services
+# [PÉDAGOGIE] RÔLE    — Dire à Prometheus QUOI scraper : l'endpoint /metrics de l'API InduSense.
+# [PÉDAGOGIE] THÉORIE — dans le réseau Compose, chaque service est joignable par son NOM
+# [PÉDAGOGIE]           • "api:8000" fonctionne ici (Prometheus tourne DANS le même réseau),
+# [PÉDAGOGIE]             contrairement à un exporteur hôte qui exigerait host.docker.internal
+# [PÉDAGOGIE] À VOIR  — http://127.0.0.1:9090/targets doit montrer la cible "indusense-api" à
+# [PÉDAGOGIE]           l'état UP après le démarrage de la stack.
+# [PÉDAGOGIE] PIÈGE   — Si l'API n'est pas encore "healthy" quand Prometheus démarre son premier
+# [PÉDAGOGIE]           scrape, la cible apparaît DOWN quelques secondes ; c'est le depends_on
+# [PÉDAGOGIE]           service_healthy du compose.yaml qui évite de courir au démarrage.
+# [PÉDAGOGIE] GARDE   — Toutes les lignes marquées [PÉDAGOGIE] sont des commentaires : elles
+# [PÉDAGOGIE]           guident la lecture sans changer l'exécution.
+# [PÉDAGOGIE] ============================================================================
+
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: indusense-api
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["api:8000"]

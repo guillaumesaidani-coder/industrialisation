@@ -1,0 +1,92 @@
+# [PÉDAGOGIE] ============================================================================
+# [PÉDAGOGIE] FICHIER — compose.yaml
+# [PÉDAGOGIE] MODULE  — M28 — orchestration Compose : API, Prometheus, Grafana
+# [PÉDAGOGIE] RÔLE    — Décrire la stack de développement complète (3 conteneurs) et l'ORDRE dans
+# [PÉDAGOGIE]           lequel ils doivent réellement être prêts, pas seulement démarrés.
+# [PÉDAGOGIE] THÉORIE — "démarré" (process lancé) et "prêt" (healthcheck au vert) sont deux états
+# [PÉDAGOGIE]           différents
+# [PÉDAGOGIE]           • depends_on sans condition n'attend QUE le démarrage du conteneur amont,
+# [PÉDAGOGIE]             pas sa disponibilité applicative -> race condition classique
+# [PÉDAGOGIE]           • condition: service_healthy fait attendre le HEALTHCHECK du service amont
+# [PÉDAGOGIE]             avant de démarrer le suivant : Prometheus n'interroge jamais une API pas
+# [PÉDAGOGIE]             encore chargée, Grafana ne s'ouvre jamais sur un Prometheus vide
+# [PÉDAGOGIE] À VOIR  — `docker compose ps` doit montrer les 3 services "healthy" ; les scrapes
+# [PÉDAGOGIE]           Prometheus vers l'API ne doivent jamais échouer au tout premier essai.
+# [PÉDAGOGIE] PIÈGE   — Un service sans HEALTHCHECK ne peut pas être la cible d'un
+# [PÉDAGOGIE]           condition: service_healthy ; Prometheus et Grafana n'en ont pas nativement,
+# [PÉDAGOGIE]           on les définit donc explicitement ci-dessous.
+# [PÉDAGOGIE] GARDE   — Toutes les lignes marquées [PÉDAGOGIE] sont des commentaires : elles
+# [PÉDAGOGIE]           guident la lecture sans changer l'exécution.
+# [PÉDAGOGIE] ============================================================================
+
+# =============================================================================
+# compose.yaml — stack locale InduSense (module 28)
+# -----------------------------------------------------------------------------
+# `docker compose up -d --build` construit l'image API puis démarre les 3
+# services dans l'ordre imposé par depends_on/condition. `docker compose down`
+# arrête et retire les conteneurs (les volumes nommés survivent).
+# =============================================================================
+
+services:
+  # ---- api : l'application InduSense (module 27), reconstruite depuis le Dockerfile ----
+  api:
+    build: .
+    # `env_file` charge les variables locales (clé API, seuil, ...) sans les
+    # écrire en dur ici. Voir .env.example pour la liste attendue.
+    env_file: .env
+    ports:
+      - "8000:8000"
+    # Le HEALTHCHECK du Dockerfile (GET /health) sert de base au
+    # `condition: service_healthy` utilisé plus bas par prometheus.
+    restart: unless-stopped
+
+  # ---- prometheus : collecte /metrics de l'API, expose son UI sur :9090 ----
+  prometheus:
+    image: prom/prometheus:v3.1.0
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    # [PÉDAGOGIE] DÉPENDANCE — attend que l'API soit VRAIMENT prête (pas juste lancée) avant de
+    # [PÉDAGOGIE] démarrer Prometheus, pour éviter un premier scrape à vide.
+    depends_on:
+      api:
+        condition: service_healthy
+    # Image Prometheus = busybox minimal, mais wget y est disponible : on teste
+    # l'endpoint de readiness natif de Prometheus lui-même (/-/ready).
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9090/-/ready"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  # ---- grafana : dashboards, avec la source Prometheus provisionnée automatiquement ----
+  grafana:
+    image: grafana/grafana:11.4.0
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    # [PÉDAGOGIE] DÉPENDANCE — attend que Prometheus soit prêt (pas juste démarré) : Grafana
+    # [PÉDAGOGIE] provisionne sa datasource dès l'ouverture, autant qu'elle réponde déjà.
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+# Volumes nommés : les données Prometheus/Grafana survivent à un `compose down`
+# (sans `-v`), pour ne pas reperdre dashboards/historique à chaque redémarrage.
+volumes:
+  prometheus_data:
+  grafana_data:
