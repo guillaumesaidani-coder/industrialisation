@@ -1,0 +1,9 @@
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Exemples AWS publics de la documentation officielle (non actifs, jamais des cles reelles)"
+regexes = [
+  '''AKIAIOSFODNN7EXAMPLE''',
+  '''wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY''',
+]

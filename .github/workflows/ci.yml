@@ -15,10 +15,24 @@ jobs:
           python-version: "3.13"
       - uses: astral-sh/setup-uv@v3
       - name: Install
-        run: uv sync --extra dev
+        run: uv sync --extra dev --frozen
       - name: Lint
-        run: uv run ruff check .
+        run: uv run --frozen ruff check .
       - name: Format
-        run: uv run black --check .
+        run: uv run --frozen black --check .
       - name: Tests
-        run: uv run pytest -q
+        run: uv run --frozen pytest -q
+
+  build:
+    needs: quality
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+      - name: Build wheel
+        run: uv build
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: indusense-wheel
+          path: dist/*.whl
