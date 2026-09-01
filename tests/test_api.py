@@ -152,6 +152,41 @@ def test_health_ok():
     assert client.get("/health").json() == {"status": "ok"}
 
 
+# [PÉDAGOGIE] BLOC `test_response_has_generated_request_id` — ce test transforme un comportement
+# [PÉDAGOGIE] attendu en contrat de non-régression.
+# [PÉDAGOGIE] CONTRAT — entrées : aucun argument explicite ; preuve : la dernière assertion est
+# [PÉDAGOGIE] l'oracle : son échec doit pointer la garantie cassée.
+def test_response_has_generated_request_id():
+    """Sans en-tête X-Request-ID côté client, l'API en génère un et le renvoie.
+
+    POURQUOI : le middleware ``add_request_id`` (main.py) garantit qu'une trace
+    existe pour CHAQUE requête, même si le client n'en fournit pas. On vérifie
+    ici que l'en-tête est bien présent dans la réponse et non vide — sans
+    imposer de format précis (uuid.uuid4() suffit à le garantir côté code).
+    """
+    # [PÉDAGOGIE] ORACLE — l'assertion compare le résultat observé au contrat attendu par ce test.
+    r = client.get("/health")
+    assert "x-request-id" in r.headers
+    # [PÉDAGOGIE] ORACLE — l'assertion compare le résultat observé au contrat attendu par ce test.
+    assert r.headers["x-request-id"] != ""
+
+
+# [PÉDAGOGIE] BLOC `test_response_echoes_client_request_id` — ce test transforme un comportement
+# [PÉDAGOGIE] attendu en contrat de non-régression.
+# [PÉDAGOGIE] CONTRAT — entrées : aucun argument explicite ; preuve : la dernière assertion est
+# [PÉDAGOGIE] l'oracle : son échec doit pointer la garantie cassée.
+def test_response_echoes_client_request_id():
+    """Avec un X-Request-ID fourni par le client, l'API le renvoie TEL QUEL.
+
+    POURQUOI : un client qui a déjà son propre système de traçage doit pouvoir
+    corréler ses logs avec ceux de l'API — l'identifiant qu'il fournit ne doit
+    donc jamais être réécrit ou remplacé par un nouveau.
+    """
+    r = client.get("/health", headers={"X-Request-ID": "demo-trace-42"})
+    # [PÉDAGOGIE] ORACLE — l'assertion compare le résultat observé au contrat attendu par ce test.
+    assert r.headers["x-request-id"] == "demo-trace-42"
+
+
 # [PÉDAGOGIE] BLOC `test_missing_api_key_returns_401` — ce test transforme un comportement attendu
 # [PÉDAGOGIE] en contrat de non-régression.
 # [PÉDAGOGIE] CONTRAT — entrées : aucun argument explicite ; preuve : la dernière assertion est
