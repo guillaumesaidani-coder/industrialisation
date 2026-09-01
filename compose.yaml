@@ -1,7 +1,7 @@
 # [PÉDAGOGIE] ============================================================================
 # [PÉDAGOGIE] FICHIER — compose.yaml
-# [PÉDAGOGIE] MODULE  — M28 — orchestration Compose : API, Prometheus, Grafana
-# [PÉDAGOGIE] RÔLE    — Décrire la stack de développement complète (3 conteneurs) et l'ORDRE dans
+# [PÉDAGOGIE] MODULE  — M28 — orchestration Compose : API, PostgreSQL, Prometheus, Grafana
+# [PÉDAGOGIE] RÔLE    — Décrire la stack de développement complète (4 conteneurs) et l'ORDRE dans
 # [PÉDAGOGIE]           lequel ils doivent réellement être prêts, pas seulement démarrés.
 # [PÉDAGOGIE] THÉORIE — "démarré" (process lancé) et "prêt" (healthcheck au vert) sont deux états
 # [PÉDAGOGIE]           différents
@@ -22,20 +22,46 @@
 # =============================================================================
 # compose.yaml — stack locale InduSense (module 28)
 # -----------------------------------------------------------------------------
-# `docker compose up -d --build` construit l'image API puis démarre les 3
+# `docker compose up -d --build` construit l'image API puis démarre les 4
 # services dans l'ordre imposé par depends_on/condition. `docker compose down`
 # arrête et retire les conteneurs (les volumes nommés survivent).
 # =============================================================================
 
 services:
+  # ---- db : PostgreSQL, stockage relationnel de l'API (module 30) ----
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-indusense}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    # `pg_isready` interroge le serveur PostgreSQL lui-même (pas juste le port
+    # TCP) : il ne répond « accepting connections » qu'une fois la base prête
+    # à servir de vraies requêtes.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
   # ---- api : l'application InduSense (module 27), reconstruite depuis le Dockerfile ----
   api:
     build: .
     # `env_file` charge les variables locales (clé API, seuil, ...) sans les
     # écrire en dur ici. Voir .env.example pour la liste attendue.
     env_file: .env
+    environment:
+      # URL de connexion PostgreSQL, résolue via le nom de service Compose `db`
+      # (résolution DNS interne au réseau créé par Compose, pas "localhost").
+      INDUSENSE_DB_URL: postgresql+psycopg://postgres:${POSTGRES_PASSWORD:-indusense}@db:5432/postgres
     ports:
       - "8000:8000"
+    # [PÉDAGOGIE] DÉPENDANCE — attend que PostgreSQL soit VRAIMENT prêt (pas juste lancé) avant de
+    # [PÉDAGOGIE] démarrer l'API, pour éviter une première connexion refusée au démarrage.
+    depends_on:
+      db:
+        condition: service_healthy
     # Le HEALTHCHECK du Dockerfile (GET /health) sert de base au
     # `condition: service_healthy` utilisé plus bas par prometheus.
     restart: unless-stopped
@@ -85,8 +111,10 @@ services:
       retries: 5
     restart: unless-stopped
 
-# Volumes nommés : les données Prometheus/Grafana survivent à un `compose down`
-# (sans `-v`), pour ne pas reperdre dashboards/historique à chaque redémarrage.
+# Volumes nommés : les données Postgres/Prometheus/Grafana survivent à un
+# `compose down` (sans `-v`), pour ne pas reperdre base/dashboards/historique
+# à chaque redémarrage.
 volumes:
+  pgdata:
   prometheus_data:
   grafana_data:
