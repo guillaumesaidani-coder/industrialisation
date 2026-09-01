@@ -28,8 +28,11 @@ import sys
 # [PÉDAGOGIE] disperser.
 IMAGE = sys.argv[1] if len(sys.argv) > 1 else "indusense:0.1.0"
 # [PÉDAGOGIE] CONSTANTE / CONTRAT — cette valeur nommée centralise un choix partagé au lieu de le
-# [PÉDAGOGIE] disperser.
-MAX_MB = 200
+# [PÉDAGOGIE] disperser. Seuil réaliste (retour formateur M27) : mesuré à 353,6 Mo (docker save),
+# [PÉDAGOGIE] poids dominant = scikit-learn/scipy + les dépendances communes des modules 28-33
+# [PÉDAGOGIE] (dvc, prefect, sqlalchemy, psycopg, evidently) non séparées du runtime API. 400 Mo
+# [PÉDAGOGIE] laisse une marge raisonnable sans masquer une vraie régression de taille.
+MAX_MB = 400
 
 
 # [PÉDAGOGIE] BLOC `docker` — unité de responsabilité : isoler un comportement nommable, testable
