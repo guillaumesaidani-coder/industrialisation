@@ -69,3 +69,11 @@ mlflow.db
 # [PÉDAGOGIE] EXCLUSION — ce motif retire un artefact généré, local ou sensible du périmètre
 # [PÉDAGOGIE] concerné.
 mlruns/
+
+# [PÉDAGOGIE] EXCLUSION — ce motif retire un artefact généré, local ou sensible du périmètre
+# [PÉDAGOGIE] concerné.
+artifacts/predictions.db*
+
+# [PÉDAGOGIE] EXCLUSION — ce motif retire un artefact généré, local ou sensible du périmètre
+# [PÉDAGOGIE] concerné.
+/deck/

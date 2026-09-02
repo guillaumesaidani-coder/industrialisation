@@ -61,6 +61,8 @@ class Settings(BaseSettings):
     decision_threshold: float = (
         0.5  # seuil proba → décision « alerte »/« ok » (INDUSENSE_DECISION_THRESHOLD)
     )
+    # --- Réglages du pipeline Prefect (modules 29-30) ---
+    predictions_db: Path = Path("artifacts/predictions.db")  # store idempotent des scores
 
 
 # On crée UNE instance partagée, importable partout via `from indusense.config import settings`.
