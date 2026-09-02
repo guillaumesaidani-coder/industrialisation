@@ -7,35 +7,25 @@ Reference : FORMATION/JALONS/07-j4-matin-m29-m30.md
 
 from __future__ import annotations
 
-import sqlite3
 import sys
 import tempfile
-from contextlib import closing
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
-from flows.pipeline import indusense_pipeline  # noqa: E402
-from indusense.config import settings  # noqa: E402
-
-
-def _count_predictions(db_path: Path) -> int:
-    with closing(sqlite3.connect(db_path)) as conn:
-        return conn.execute("SELECT COUNT(*) FROM predictions").fetchone()[0]
+from indusense.config import settings
+from indusense.flows.predict_flow import count_predictions, indusense_pipeline
 
 
 def main() -> int:
     with tempfile.TemporaryDirectory(prefix="indusense-preuve-") as tmp:
         db_path = Path(tmp) / "predictions.db"
         assert not db_path.exists(), "la base de preuve doit etre neuve, jamais reutilisee"
+        db_url = f"sqlite:///{db_path.as_posix()}"
 
-        first = indusense_pipeline(data_dir=settings.data_dir, db_path=db_path)
-        rows_after_first = _count_predictions(db_path)
+        first = indusense_pipeline(data_dir=settings.data_dir, db_url=db_url)
+        rows_after_first = count_predictions(db_url)
 
-        second = indusense_pipeline(data_dir=settings.data_dir, db_path=db_path)
-        rows_after_second = _count_predictions(db_path)
+        second = indusense_pipeline(data_dir=settings.data_dir, db_url=db_url)
+        rows_after_second = count_predictions(db_url)
 
         print(f"1er passage : rows_scored={first['rows_scored']} rows_in_db={rows_after_first}")
         print(f"2e  passage : rows_scored={second['rows_scored']} rows_in_db={rows_after_second}")
@@ -48,7 +38,7 @@ def main() -> int:
             )
             return 1
 
-        print(f"OK idempotence : {rows_after_second} lignes stables apres 2 passages ({db_path})")
+        print(f"OK idempotence : {rows_after_second} lignes stables apres 2 passages ({db_url})")
         return 0
 
 

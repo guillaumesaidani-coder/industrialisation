@@ -62,7 +62,9 @@ class Settings(BaseSettings):
         0.5  # seuil proba → décision « alerte »/« ok » (INDUSENSE_DECISION_THRESHOLD)
     )
     # --- Réglages du pipeline Prefect (modules 29-30) ---
-    predictions_db: Path = Path("artifacts/predictions.db")  # store idempotent des scores
+    # URL SQLAlchemy du store de predictions : sqlite:/// en local/QA,
+    # postgresql+psycopg://...@db:5432/postgres injecte par compose.yaml (module 30).
+    db_url: str = "sqlite:///artifacts/predictions.db"
 
 
 # On crée UNE instance partagée, importable partout via `from indusense.config import settings`.
