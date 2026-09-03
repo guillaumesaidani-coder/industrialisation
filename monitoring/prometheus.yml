@@ -22,3 +22,11 @@ scrape_configs:
     metrics_path: /metrics
     static_configs:
       - targets: ["api:8000"]
+
+  # Job ajoute (TP drift m31) : l'exporteur tourne SUR LE POSTE (pas dans
+  # Docker) -> on le joint via host.docker.internal (Docker Desktop Win/macOS ;
+  # sous Linux, ajouter extra_hosts: ["host.docker.internal:host-gateway"] au
+  # service prometheus du compose).
+  - job_name: indusense-drift
+    static_configs:
+      - targets: ["host.docker.internal:9109"]

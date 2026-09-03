@@ -74,6 +74,11 @@ services:
       - prometheus_data:/prometheus
     ports:
       - "9090:9090"
+    # `host.docker.internal` est fourni nativement par Docker Desktop
+    # (Windows/macOS) ; cette entree ajoute la meme resolution sous Docker
+    # Engine Linux, pour joindre l'exporteur drift (m31-32) lance sur l'hote.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     # [PÉDAGOGIE] DÉPENDANCE — attend que l'API soit VRAIMENT prête (pas juste lancée) avant de
     # [PÉDAGOGIE] démarrer Prometheus, pour éviter un premier scrape à vide.
     depends_on:
