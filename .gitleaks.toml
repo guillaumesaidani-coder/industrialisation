@@ -1,0 +1,24 @@
+# [PÉDAGOGIE] ============================================================================
+# [PÉDAGOGIE] FICHIER — .gitleaks.toml
+# [PÉDAGOGIE] MODULE  — M24 — pre-commit, faux positifs gitleaks
+# [PÉDAGOGIE] RÔLE    — Étendre les règles par défaut de gitleaks (useDefault) et lever, de façon
+# [PÉDAGOGIE]           ciblée, les deux valeurs d'exemple AWS publiées dans la documentation
+# [PÉDAGOGIE]           officielle AWS (jamais des clés actives, même révoquées).
+# [PÉDAGOGIE] THÉORIE — un allowlist sur les valeurs précises (pas sur le chemin du fichier)
+# [PÉDAGOGIE]           laisse gitleaks alerter sur une vraie clé qui apparaîtrait plus tard au
+# [PÉDAGOGIE]           même endroit.
+# [PÉDAGOGIE] PIÈGE   — désactiver gitleaks ou allowlister tout le fichier masquerait un vrai
+# [PÉDAGOGIE]           secret futur ; on cible donc les deux chaînes exactes, rien d'autre.
+# [PÉDAGOGIE] GARDE   — Toutes les lignes marquées [PÉDAGOGIE] sont des commentaires : elles
+# [PÉDAGOGIE]           guident la lecture sans changer l'exécution.
+# [PÉDAGOGIE] ============================================================================
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Exemples AWS publics de la documentation officielle (non actifs, jamais des clés reelles)"
+regexes = [
+  '''AKIAIOSFODNN7EXAMPLE''',
+  '''wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY''',
+]
