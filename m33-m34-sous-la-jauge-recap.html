@@ -65,11 +65,17 @@
   .did{display:flex; gap:.6rem; align-items:flex-start; background:var(--panel-2); border-radius:8px; padding:.7rem .9rem; margin-bottom:1rem; font-size:.86rem;}
   .did .tag{font-family:"IBM Plex Mono",monospace; font-size:.68rem; text-transform:uppercase; letter-spacing:.08em; color:var(--signal); font-weight:600; flex:none; padding-top:.1rem;}
 
+  .explain{display:flex; gap:.7rem; align-items:flex-start; background:var(--panel); border:1px dashed var(--signal-soft); border-radius:8px; padding:.8rem 1rem; margin-bottom:1rem;}
+  .explain .tag{font-family:"IBM Plex Mono",monospace; font-size:.68rem; text-transform:uppercase; letter-spacing:.08em; color:var(--signal); font-weight:700; flex:none; padding-top:.1rem;}
+  .explain p{margin:0; font-size:.88rem; color:var(--ink);}
+
   .chart-card{background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:1.1rem 1.3rem 1rem; box-shadow:var(--shadow);}
   .chart-card + .chart-card{margin-top:.7rem;}
   .chart-card svg{width:100%; height:auto; display:block; overflow:visible;}
   .chart-title{font-size:.82rem; font-weight:600; margin:0 0 .3rem; display:flex; justify-content:space-between; align-items:baseline;}
   .chart-title .now{font-family:"IBM Plex Mono",monospace; font-weight:600; font-size:.85rem;}
+  .chart-sub{font-size:.76rem; color:var(--ink-soft); margin:0 0 .6rem; line-height:1.4;}
+  .chart-sub b{color:var(--ink); font-weight:600;}
 
   .finding{border-left:3px solid var(--accent); background:var(--panel); border:1px solid var(--line); border-radius:0 8px 8px 0; border-left-width:3px; padding:.85rem 1.1rem; margin-top:.9rem;}
   .finding .k{font-family:"IBM Plex Mono",monospace; font-size:.68rem; text-transform:uppercase; letter-spacing:.1em; color:var(--accent-ink); font-weight:700; display:block; margin-bottom:.35rem;}
@@ -111,9 +117,11 @@
     <div class="section-head"><span class="idx">01</span><h2>Compteur brut vs <code>rate()</code></h2></div>
     <p class="lede">Un compteur Prometheus ne fait que monter. Pour lire un débit, il faut sa dérivée — <code>rate()</code>.</p>
     <div class="did"><span class="tag">Fait</span> Locust a tapé <code>/predict-tabular</code> pendant 10 minutes ; on lit <code>http_requests_total</code> brut, puis <code>rate(...[2m])</code>, sur la même fenêtre de 20 minutes.</div>
+    <div class="explain"><span class="tag">En clair</span><p>Un compteur Prometheus, c'est comme le compteur kilométrique d'une voiture : il ne fait qu'augmenter, jamais reculer, même à l'arrêt. Pour savoir <em>« à quelle vitesse ça roule maintenant »</em>, il faut calculer une vitesse à partir de ce compteur — c'est exactement ce que fait <code>rate()</code>, l'équivalent du compteur de vitesse à côté du compteur kilométrique.</p></div>
 
     <div class="chart-card">
       <div class="chart-title"><span>http_requests_total{handler="/predict-tabular"}</span><span class="now mono" style="color:var(--signal)">57 → 115</span></div>
+      <p class="chart-sub"><b>Axe horizontal</b> : le temps, de 20 minutes avant maintenant (« -20 ») jusqu'à maintenant (« 0 »). <b>Axe vertical</b> : le nombre total de requêtes envoyées depuis le début — un chiffre qui ne redescend jamais.</p>
       <svg viewBox="0 0 740 120">
         <rect x="222.8" y="6" width="302.2" height="106" fill="var(--panel-2)" opacity="0.6"/>
         <g font-family="IBM Plex Mono, monospace" font-size="9.5" fill="var(--ink-soft)">
@@ -129,6 +137,7 @@
 
     <div class="chart-card">
       <div class="chart-title"><span>rate(http_requests_total{handler="/predict-tabular"}[2m])</span><span class="now mono" style="color:var(--accent-ink)">req/s</span></div>
+      <p class="chart-sub"><b>Axe horizontal</b> : la même échelle de temps que ci-dessus. <b>Axe vertical</b> : le nombre de requêtes reçues <em>par seconde</em>, calculé sur les 2 dernières minutes glissantes — c'est le débit, pas un cumul.</p>
       <svg viewBox="0 0 740 120">
         <rect x="222.8" y="6" width="302.2" height="106" fill="var(--panel-2)" opacity="0.6"/>
         <text x="374" y="20" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="9.5" fill="var(--ink-soft)">Locust arrêté — rate() retombe à 0</text>
@@ -151,9 +160,11 @@
     <div class="section-head"><span class="idx">02</span><h2>p50, p95, p99 — presque la même ligne</h2></div>
     <p class="lede">L'hypothèse de départ : avec un trafic uniforme, les trois quantiles se confondraient. La vraie raison de leur superposition s'est révélée différente.</p>
     <div class="did"><span class="tag">Fait</span> <code>histogram_quantile(0.5|0.95|0.99, sum by (le) (rate(http_request_duration_seconds_bucket{handler="/predict-tabular"}[2m])))</code>, rejouées sur la même fenêtre de 20 minutes.</div>
+    <div class="explain"><span class="tag">En clair</span><p>Si on range toutes les requêtes de la plus rapide à la plus lente : le <b>p50</b> est le temps de la requête du milieu (une sur deux est plus rapide). Le <b>p95</b> est le temps en dessous duquel se trouvent 95&nbsp;% des requêtes (seules 5&nbsp;% sont plus lentes). Le <b>p99</b> fait pareil pour 99&nbsp;%. Plus l'écart entre p50 et p99 est grand, plus certains utilisateurs attendent nettement plus longtemps que les autres — une moyenne seule ne montre jamais ça.</p></div>
 
     <div class="chart-card">
       <div class="chart-title"><span>Trois quantiles, un seul faisceau</span></div>
+      <p class="chart-sub">Ce n'est pas une évolution dans le temps : c'est une règle graduée. <b>Axe horizontal</b> : le temps de réponse d'une requête, en secondes, de 0 à 0,12&nbsp;s (120&nbsp;millisecondes). Chaque point marque où se situe un quantile sur cette règle.</p>
       <svg viewBox="0 0 740 190">
         <rect x="222.8" y="6" width="302.2" height="176" fill="var(--panel-2)" opacity="0.6"/>
         <line x1="60" y1="41.7" x2="680" y2="41.7" stroke="var(--crit)" stroke-width="1.2" stroke-dasharray="4 3"/>
@@ -188,6 +199,7 @@
     <div class="section-head"><span class="idx">03</span><h2>PSI vs rappel — fenêtre 3, même instant</h2></div>
     <p class="lede">Aucune nouvelle requête ici : on relit deux métriques déjà calculées par le TP drift, côte à côte plutôt que dans un tableau.</p>
     <div class="did"><span class="tag">Fait</span> <code>indusense_drift_psi{feature="temperature", fenetre="3"}</code> et <code>indusense_drift_rappel{fenetre="3"}</code>, interrogées à l'instant.</div>
+    <div class="explain"><span class="tag">En clair</span><p><b>Le PSI</b> mesure si ce que voit un capteur aujourd'hui ressemble encore à ce qu'il voyait pendant l'entraînement du modèle — plus il est élevé, plus la donnée d'aujourd'hui diffère de la référence. <b>Le rappel</b> est la proportion de vraies pannes que le modèle détecte réellement (sur 100 pannes réelles, combien sont repérées ?). Ce sont deux mesures indépendantes : un PSI bas ne garantit pas un bon rappel, comme le montrent les deux chiffres ci-dessous.</p></div>
 
     <div class="tiles3">
       <div class="tile-big">
@@ -213,9 +225,11 @@
     <div class="section-head"><span class="idx">04</span><h2>Répartition par code HTTP — un incident sans alerte</h2></div>
     <p class="lede">Aucun seuil configuré ici : c'est la forme du graphique elle-même qui révèle le problème.</p>
     <div class="did"><span class="tag">Fait</span> pendant que Locust tournait en <code>2xx</code>, on a envoyé 4 requêtes invalides (moins de 7 relevés → 422) et une requête surdimensionnée (98&nbsp;439 octets → 413, limite 65&nbsp;536).</div>
+    <div class="explain"><span class="tag">En clair</span><p>À chaque requête, le serveur répond par un code HTTP à 3 chiffres. <b>2xx</b> veut dire « ça a marché » (200 = OK). <b>4xx</b> veut dire « ta demande est refusée à cause d'une erreur du côté de qui a envoyé la requête » (422 = données mal formées, 413 = fichier trop gros) — à distinguer d'un <b>5xx</b>, qui voudrait dire que c'est le serveur lui-même qui a un problème.</p></div>
 
     <div class="chart-card">
       <div class="chart-title"><span>rate(...{status="2xx"}[3m])</span></div>
+      <p class="chart-sub"><b>Axe horizontal</b> : même échelle de temps que la section 1. <b>Axe vertical</b> : requêtes <em>réussies</em> par seconde.</p>
       <svg viewBox="0 0 740 120">
         <g font-family="IBM Plex Mono, monospace" font-size="9.5" fill="var(--ink-soft)">
           <text x="55" y="18" text-anchor="end">0,16</text>
@@ -230,6 +244,7 @@
 
     <div class="chart-card">
       <div class="chart-title"><span>rate(...{status="4xx"}[3m])</span><span class="now mono" style="color:var(--crit)">422 seulement</span></div>
+      <p class="chart-sub"><b>Axe horizontal</b> : même échelle de temps. <b>Axe vertical</b> : requêtes <em>refusées</em> par seconde — <b>attention, l'échelle va seulement jusqu'à 0,02</b> (10 fois plus petite que le graphe du dessus), pour que le petit pic reste visible.</p>
       <svg viewBox="0 0 740 90">
         <g font-family="IBM Plex Mono, monospace" font-size="9.5" fill="var(--ink-soft)">
           <text x="55" y="18" text-anchor="end">0,02</text>
