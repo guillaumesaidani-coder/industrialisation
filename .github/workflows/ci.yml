@@ -21,8 +21,10 @@ name: CI
 on:
   # [PÉDAGOGIE] CLÉ `push` — ce champ déclaratif participe au contrat de configuration.
   push:
-    # [PÉDAGOGIE] CLÉ `branches` — ce champ déclaratif participe au contrat de configuration.
-    branches: [main]
+    # [PÉDAGOGIE] CLÉ `branches` — élargi à toutes les branches (au lieu de `[main]` seul) pour
+    # [PÉDAGOGIE] qu'un push sur une branche de travail (ex. rattrapage/...) déclenche aussi une
+    # [PÉDAGOGIE] exécution visible dans l'onglet Actions, pas seulement une PR vers main.
+    branches: ["**"]
   # [PÉDAGOGIE] CLÉ `pull_request` — ce champ déclaratif participe au contrat de configuration.
   pull_request:
 
@@ -53,24 +55,45 @@ jobs:
       # [PÉDAGOGIE] IDENTITÉ — ce nom doit permettre de retrouver rapidement la preuve dans
       # [PÉDAGOGIE] l'interface.
       - name: Install
-        # [PÉDAGOGIE] COMMANDE — elle s'exécute dans le shell du runner et son code de sortie
-        # [PÉDAGOGIE] porte le verdict.
-        run: uv sync --extra dev
+        # [PÉDAGOGIE] COMMANDE — --frozen refuse toute mise à jour du verrou : la CI installe
+        # [PÉDAGOGIE] exactement uv.lock committé, jamais une résolution recalculée.
+        run: uv sync --extra dev --frozen
       # [PÉDAGOGIE] IDENTITÉ — ce nom doit permettre de retrouver rapidement la preuve dans
       # [PÉDAGOGIE] l'interface.
       - name: Lint
         # [PÉDAGOGIE] COMMANDE — elle s'exécute dans le shell du runner et son code de sortie
         # [PÉDAGOGIE] porte le verdict.
-        run: uv run ruff check .
+        run: uv run --frozen ruff check .
       # [PÉDAGOGIE] IDENTITÉ — ce nom doit permettre de retrouver rapidement la preuve dans
       # [PÉDAGOGIE] l'interface.
       - name: Format
         # [PÉDAGOGIE] COMMANDE — elle s'exécute dans le shell du runner et son code de sortie
         # [PÉDAGOGIE] porte le verdict.
-        run: uv run black --check .
+        run: uv run --frozen black --check .
       # [PÉDAGOGIE] IDENTITÉ — ce nom doit permettre de retrouver rapidement la preuve dans
       # [PÉDAGOGIE] l'interface.
       - name: Tests
         # [PÉDAGOGIE] COMMANDE — elle s'exécute dans le shell du runner et son code de sortie
         # [PÉDAGOGIE] porte le verdict.
-        run: uv run pytest -q
+        run: uv run --frozen pytest -q
+
+  # [PÉDAGOGIE] CLÉ `build` — ce job ne démarre que si `quality` réussit (needs), pour ne jamais
+  # [PÉDAGOGIE] empaqueter un code qui n'a pas passé les contrôles.
+  build:
+    # [PÉDAGOGIE] DÉPENDANCE ENTRE JOBS — attend le succès de `quality` avant de démarrer.
+    needs: quality
+    # [PÉDAGOGIE] CLÉ `runs-on` — chaque job reçoit sa propre machine jetable, même dans un run.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+      - name: Build wheel
+        # [PÉDAGOGIE] COMMANDE — lit pyproject.toml/uv.lock et produit sdist + wheel dans dist/.
+        run: uv build
+      - name: Upload artifact
+        # [PÉDAGOGIE] SORTIE — copie dist/*.whl hors de la VM avant sa destruction ; téléchargeable
+        # [PÉDAGOGIE] depuis la page du run.
+        uses: actions/upload-artifact@v4
+        with:
+          name: indusense-wheel
+          path: dist/*.whl

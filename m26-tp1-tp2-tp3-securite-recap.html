@@ -170,8 +170,8 @@
       <p>Objectif : prouver que les quatre contrôles « Implémenté » tiennent réellement leurs codes, et que <code>/health</code> reste ouvert (c'est la sonde de liveness d'un orchestrateur — la protéger casserait le monitoring).</p>
       <div class="terminal">
         <div class="terminal-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="label">uv run pytest tests/test_api.py tests/test_security.py -q</span></div>
-        <pre>...........                                                              [100%]
-<span class="ok">11 passed</span>, 1 warning in 1.7s</pre>
+        <pre>..............                                                            [100%]
+<span class="ok">14 passed</span>, 1 warning in 2.1s</pre>
       </div>
       <div class="checklist">
         <div class="check-item">
@@ -191,7 +191,10 @@
           <span><span class="cmd">corps &gt; 64 Ko</span><span class="result">413 — limit_body_size</span></span>
         </div>
       </div>
-      <p>Un détail volontaire : le test direct appelle <code>rate_limit</code> 60 fois puis vérifie que le 61ᵉ échoue — c'est une <strong>limite exacte</strong>, testable de façon déterministe, contrairement à une rafale HTTP réelle qui doit seulement contenir « au moins un 429 ».</p>
+      <p><code>test_rate_limit_blocks_after_limit</code> appelle <code>rate_limit</code> 60 fois puis vérifie que le 61ᵉ échoue — une <strong>limite exacte</strong>, testable de façon déterministe en appelant directement la fonction interne.</p>
+      <div class="callout warn">
+        <strong>Retour formateur.</strong> Ce test direct ne prouvait pas que <code>rate_limit_dependency</code> est réellement branchée sur la route <code>/predict-tabular</code> — seulement que la fonction <code>rate_limit</code> fonctionne isolément. Le guide exige en plus une rafale HTTP réelle (70 appels via <code>TestClient</code>) contenant au moins un 429. Ajouté : <code>test_rate_limit_burst_returns_429_over_http</code>, qui envoie 70 requêtes à <code>/predict-tabular</code> et vérifie <code>429 in status_codes</code>.
+      </div>
     </div>
   </section>
 

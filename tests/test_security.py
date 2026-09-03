@@ -199,6 +199,54 @@ def test_rate_limit_blocks_after_limit():
 # [PÉDAGOGIE] attendu en contrat de non-régression.
 # [PÉDAGOGIE] CONTRAT — entrées : aucun argument explicite ; preuve : la dernière assertion est
 # [PÉDAGOGIE] l'oracle : son échec doit pointer la garantie cassée.
+def test_rate_limit_burst_returns_429_over_http():
+    """Rafale de 70 requêtes RÉELLES via l'API : au moins un 429 doit apparaître.
+
+    POURQUOI : ``test_rate_limit_blocks_after_limit`` prouve la mécanique du
+    compteur en appelant ``security.rate_limit`` directement, avec une fausse
+    requête fabriquée à la main — mais ça ne prouve pas que la dépendance est
+    bien branchée sur la route réelle. Ce test-ci passe par ``TestClient``, donc
+    par toute la chaîne HTTP (middlewares, auth, dépendances), pour vérifier que
+    le garde-fou agit vraiment sur du trafic qui ressemble à un usage réel.
+
+    NOTE : la politique appliquée ici est celle FIXE de ``rate_limit_dependency``
+    (60 requêtes/minute/IP) — pas les 60 du test unitaire au-dessus, qui sont
+    juste une coïncidence de valeur par défaut.
+    """
+    # On repart d'un compteur vide pour ne pas hériter de requêtes d'un autre
+    # test (même mécanisme que ``test_rate_limit_blocks_after_limit``).
+    security._hits.clear()
+
+    # Un corps par ailleurs valide : on veut isoler le comportement du LIMITEUR
+    # DE DÉBIT, pas déclencher un 422/503 qui masquerait le signal recherché.
+    readings = [
+        {
+            "timestamp": f"2025-02-01T{h:02d}:00:00",
+            "temperature": 50 + h,
+            "pressure_bar": 195 + h * 0.5,
+        }
+        for h in range(8)
+    ]
+
+    # 70 appels réels > 60 (la limite) : les 10 derniers doivent être bloqués.
+    # TestClient envoie toutes ces requêtes depuis la même IP simulée -> elles
+    # partagent le même compteur côté ``rate_limit_dependency``.
+    status_codes = [
+        client.post(
+            "/predict-tabular",
+            headers={"X-API-Key": "dev-key"},
+            json={"machine_id": "MACH-01", "readings": readings},
+        ).status_code
+        for _ in range(70)
+    ]
+
+    # On nettoie pour ne pas polluer les tests suivants.
+    security._hits.clear()
+
+    # Comportement attendu : au moins une réponse 429 dans la rafale.
+    assert 429 in status_codes
+
+
 def test_no_secret_or_payload_leak_in_logs():
     """Vérifie qu'aucune ligne de log n'expose la clé API ni le contenu du payload.
 
